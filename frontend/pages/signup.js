@@ -114,6 +114,11 @@ export default function SignupPage() {
         router.replace(result.user.isAdmin ? '/admin' : '/');
         return;
       }
+      if (result.needsVerification) {
+        if (result.devLink) router.replace(result.devLink);
+        else router.replace(`/verify-email?email=${encodeURIComponent(result.email)}&new=1`);
+        return;
+      }
       if (result.pendingApproval) {
         router.replace(`/signup-pending?email=${encodeURIComponent(result.email)}${result.devLink ? `&devLink=${encodeURIComponent(result.devLink)}` : ''}`);
         return;

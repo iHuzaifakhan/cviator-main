@@ -45,6 +45,7 @@ services:
       # Comma-separated list of allowed CORS origins, or '*' to allow any.
       # Default '*' makes EC2 deploys work without knowing the public IP up front.
       - FRONTEND_URL=${FRONTEND_URL:-*}
+      - APP_URL=${APP_URL:-http://localhost:3000}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}

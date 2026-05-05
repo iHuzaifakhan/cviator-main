@@ -205,11 +205,7 @@ router.post('/signup', async (req, res) => {
     let initialIsRoot  = false;
     let initialVerified = false;
 
-    if (role === 'student') {
-      // Email verification is disabled — activate students immediately.
-      initialStatus   = 'active';
-      initialVerified = true;
-    } else if (role === 'admin') {
+    if (role === 'admin') {
       // Root admin auto-bootstrap: only the configured ROOT_ADMIN_EMAIL
       // becomes the root admin, and only if no root admin exists yet.
       const rootSet = config.rootAdminEmail;
@@ -273,9 +269,13 @@ router.post('/signup', async (req, res) => {
       );
     }
 
-    // Admin-only flows (student email verification is disabled).
+    // Verification flows
     let mail;
-    if (role === 'admin' && !initialIsRoot) {
+    if (role === 'student') {
+      const tok  = await createVerification(client, user.id, 'email_verify');
+      const link = `${config.appUrl}/verify-email?token=${tok}`;
+      mail = await sendVerificationEmail(normEmail, fullName || firstName, link);
+    } else if (role === 'admin' && !initialIsRoot) {
       // Admin signup → email goes to ROOT admin (not the requester).
       const root = (await client.query(
         `SELECT id, email, full_name, first_name FROM users WHERE is_root_admin = TRUE LIMIT 1`
@@ -292,7 +292,7 @@ router.post('/signup', async (req, res) => {
       const tok  = await createVerification(client, user.id, 'admin_approval', {
         requesterEmail: normEmail,
       });
-      const link = `${config.frontendUrl}/admin/approve?token=${tok}`;
+      const link = `${config.appUrl}/admin/approve?token=${tok}`;
       mail = await sendAdminApprovalRequest(
         root.email,
         normEmail,
@@ -319,10 +319,10 @@ router.post('/signup', async (req, res) => {
 
     // Response shape
     if (role === 'student') {
-      // No email verification — log the student in immediately.
       return res.status(201).json({
-        token: signToken({ id: user.id, email: user.email }),
-        user: publicUser({ ...user, faculty_name: null, department_name: null }),
+        needsVerification: true,
+        email: normEmail,
+        ...(mail?.devLink ? { devLink: mail.devLink } : {}),
       });
     }
     if (initialIsRoot) {
@@ -369,7 +369,15 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'This account has been suspended.' });
     }
 
-    if (user.role === 'admin') {
+    if (user.role === 'student') {
+      if (!user.email_verified) {
+        return res.status(403).json({
+          error: 'Please verify your email before signing in.',
+          needsVerification: true,
+          email: user.email,
+        });
+      }
+    } else if (user.role === 'admin') {
       if (user.status === 'pending') {
         return res.status(403).json({
           error: 'Your admin account is awaiting approval by the root administrator.',
@@ -427,7 +435,7 @@ router.post('/resend-verification', async (req, res) => {
 
     await invalidateOpenTokens(client, user.id, 'email_verify');
     const tok  = await createVerification(client, user.id, 'email_verify');
-    const link = `${config.frontendUrl}/verify-email?token=${tok}`;
+    const link = `${config.appUrl}/verify-email?token=${tok}`;
 
     await client.query('COMMIT');
     const mail = await sendVerificationEmail(user.email, user.full_name || user.first_name || '', link);
@@ -488,7 +496,7 @@ router.post('/forgot-password', async (req, res) => {
 
     await invalidateOpenTokens(client, user.id, 'password_reset');
     const tok  = await createVerification(client, user.id, 'password_reset');
-    const link = `${config.frontendUrl}/reset-password?token=${tok}`;
+    const link = `${config.appUrl}/reset-password?token=${tok}`;
 
     await client.query('COMMIT');
     const mail = await sendPasswordResetEmail(user.email, user.full_name || user.first_name || '', link);
