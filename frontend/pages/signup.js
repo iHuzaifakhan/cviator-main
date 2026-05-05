@@ -110,14 +110,8 @@ export default function SignupPage() {
       const result = await signupRaw(payload);
 
       if (result.token && result.user) {
-        // Root admin auto-bootstrap
         setSession(result.token, result.user);
-        router.replace('/admin');
-        return;
-      }
-      if (result.needsVerification) {
-        if (result.devLink) router.replace(result.devLink);
-        else router.replace(`/verify-email?email=${encodeURIComponent(result.email)}&new=1`);
+        router.replace(result.user.isAdmin ? '/admin' : '/');
         return;
       }
       if (result.pendingApproval) {
