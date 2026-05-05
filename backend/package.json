@@ -1,0 +1,26 @@
+{
+  "_comment": "backend/package.json — Express API with PostgreSQL, JWT auth, and Puppeteer PDF generation.",
+  "name": "cviator-backend",
+  "version": "2.0.0",
+  "description": "Cviator Pro backend — Express + Postgres + JWT auth + Puppeteer.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.7",
+    "pg": "^8.12.0",
+    "puppeteer": "^22.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

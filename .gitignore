@@ -1,0 +1,41 @@
+# /.gitignore
+# Files & folders that should never be committed to git.
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+.next/
+**/.next/
+dist/
+build/
+
+# Environment files (keep .env.example, ignore real secrets)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Logs
+.codex-logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Terraform state (contains secrets)
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+
+# Puppeteer / Chromium downloads
+.cache/

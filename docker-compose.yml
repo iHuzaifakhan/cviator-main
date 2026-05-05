@@ -1,0 +1,87 @@
+# docker-compose.yml
+# Orchestrates the full Cviator Pro stack: PostgreSQL, Express backend,
+# and Next.js frontend.
+#
+# Before running, copy .env.example to .env and fill in real values:
+#   cp .env.example .env
+#
+# Usage:
+#   docker-compose up --build    # build + start everything
+#   docker-compose down          # stop and remove containers
+#   docker-compose down -v       # …and wipe the Postgres volume
+
+version: "3.9"
+
+services:
+  # -------- PostgreSQL --------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cviator-postgres
+    environment:
+      POSTGRES_USER:     ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB:       ${DB_NAME:-cviator}
+    # NOTE: do NOT publish 5432 in production. Internal access only.
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cviator}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # -------- Backend (Express + Puppeteer) --------
+  backend:
+    build: ./backend
+    image: ${DOCKERHUB_USERNAME:-cviator}/cviator-backend:latest
+    container_name: cviator-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      # Comma-separated list of allowed CORS origins, or '*' to allow any.
+      # Default '*' makes EC2 deploys work without knowing the public IP up front.
+      - FRONTEND_URL=${FRONTEND_URL:-*}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-cviator}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - ROOT_ADMIN_EMAIL=${ROOT_ADMIN_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@cviator.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # -------- Frontend (Next.js + Tailwind) --------
+  frontend:
+    build:
+      context: ./frontend
+      # NEXT_PUBLIC_API_URL is baked at BUILD time. Leaving it empty makes the
+      # frontend auto-detect the backend at <same-host>:5000 in the browser
+      # (see frontend/services/api.js). Override only if your API is on a
+      # different domain.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    image: ${DOCKERHUB_USERNAME:-cviator}/cviator-frontend:latest
+    container_name: cviator-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

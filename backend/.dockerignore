@@ -1,0 +1,10 @@
+# backend/.dockerignore
+# Prevents huge/irrelevant files from being copied into the Docker image.
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+Dockerfile
+.dockerignore
